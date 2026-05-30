@@ -8,7 +8,7 @@ include .env
 export
 endif
 
-.PHONY: install run infra-install bootstrap deploy-secrets deploy clean help
+.PHONY: install run infra-install bootstrap deploy-secrets deploy destroy destroy-secrets clean help
 
 # ---- Bot -------------------------------------------------------------------
 
@@ -31,6 +31,12 @@ deploy-secrets: infra-install  ## Secrets Manager リソースをデプロイ（
 
 deploy: infra-install  ## ボット本体をデプロイ（deploy-secrets と値の登録が完了していること）
 	cd infra && cdk deploy NewRelicBotStack
+
+destroy: infra-install  ## ボット本体（ECS/VPC 等）を削除
+	cd infra && cdk destroy NewRelicBotStack
+
+destroy-secrets: infra-install  ## Secrets Manager リソースを削除（シークレット値も消えるため注意）
+	cd infra && cdk destroy ChatbotSecretsStack
 
 # ---- Utility ---------------------------------------------------------------
 

@@ -3,6 +3,12 @@
 
 ### cache
 __pycache__/
+*.egg-info/
+cdk.context.json
+
+### build artifacts
+cdk.out/
+dist/
 
 ### secret files
 .env
