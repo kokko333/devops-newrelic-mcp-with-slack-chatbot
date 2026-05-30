@@ -1,0 +1,11 @@
+### Python virtual environment
+.venv/
+
+### cache
+__pycache__/
+
+### secret files
+.env
+
+### personal files
+.claude/settings.local.json
