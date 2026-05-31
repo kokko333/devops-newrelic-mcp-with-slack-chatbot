@@ -8,35 +8,47 @@ include .env
 export
 endif
 
-.PHONY: install run infra-install bootstrap deploy-secrets deploy destroy destroy-secrets clean help
+# .env の NR 設定を Terraform 変数にマッピングする
+export TF_VAR_newrelic_account_id = $(NEW_RELIC_ACCOUNT_ID)
+export TF_VAR_newrelic_api_key    = $(NEW_RELIC_API_KEY)
+export TF_VAR_newrelic_app_name   = $(NEW_RELIC_APP_NAME)
+
+.PHONY: run bootstrap deploy-secrets deploy destroy destroy-secrets \
+        monitoring-plan monitoring-apply monitoring-destroy \
+        clean help
 
 # ---- Bot -------------------------------------------------------------------
 
-install:  ## bot の依存ライブラリを bot/.venv にインストール
-	cd bot && uv sync
-
-run:  ## bot をローカルで起動（プロジェクトルートの .env を読み込む）
-	cd bot && uv run python main.py
+run:  ## 依存ライブラリをインストールして bot を起動（プロジェクトルートの .env を読み込む）
+	cd bot && uv sync && uv run python main.py
 
 # ---- Infra (CDK) -----------------------------------------------------------
 
-infra-install:  ## CDK の依存ライブラリを infra/.venv にインストール
-	cd infra && uv sync
+bootstrap:  ## CDK ブートストラップ（アカウント×リージョン(.env指定) の初回のみ）
+	cd infra && uv sync && cdk bootstrap
 
-bootstrap: infra-install  ## CDK ブートストラップ（アカウント×リージョン(.env指定) の初回のみ）
-	cd infra && cdk bootstrap
+deploy-secrets:  ## Secrets Manager リソースをデプロイ（初回のみ / 値の登録は別途必要）
+	cd infra && uv sync && cdk deploy ChatbotSecretsStack
 
-deploy-secrets: infra-install  ## Secrets Manager リソースをデプロイ（初回のみ / 値の登録は別途必要）
-	cd infra && cdk deploy ChatbotSecretsStack
+deploy:  ## ボット本体をデプロイ（deploy-secrets と値の登録が完了していること）
+	cd infra && uv sync && cdk deploy NewRelicBotStack
 
-deploy: infra-install  ## ボット本体をデプロイ（deploy-secrets と値の登録が完了していること）
-	cd infra && cdk deploy NewRelicBotStack
+destroy:  ## ボット本体（ECS/VPC 等）を削除
+	cd infra && uv sync && cdk destroy NewRelicBotStack
 
-destroy: infra-install  ## ボット本体（ECS/VPC 等）を削除
-	cd infra && cdk destroy NewRelicBotStack
+destroy-secrets:  ## Secrets Manager リソースを削除（シークレット値も消えるため注意）
+	cd infra && uv sync && cdk destroy ChatbotSecretsStack
 
-destroy-secrets: infra-install  ## Secrets Manager リソースを削除（シークレット値も消えるため注意）
-	cd infra && cdk destroy ChatbotSecretsStack
+# ---- Monitoring (Terraform / New Relic) ------------------------------------
+
+monitoring-plan:  ## Terraform init + plan（monitoring/ - 変更内容を確認）
+	cd monitoring && terraform init && terraform plan
+
+monitoring-apply:  ## Terraform init + apply（monitoring/ - New Relic リソースを作成・更新）
+	cd monitoring && terraform init && terraform apply
+
+monitoring-destroy:  ## Terraform init + destroy（monitoring/ - New Relic リソースを削除）
+	cd monitoring && terraform init && terraform destroy
 
 # ---- Utility ---------------------------------------------------------------
 
