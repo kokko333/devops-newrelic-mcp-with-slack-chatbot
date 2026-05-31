@@ -1,6 +1,8 @@
 import logging
 import re
 
+import newrelic.agent
+
 from claude_client import ClaudeClient
 from conversation_manager import ConversationManager
 
@@ -51,30 +53,39 @@ class SlackHandler:
         if not user_text:
             return
 
-        # 処理中プレースホルダーを投稿
-        placeholder = await say(text=":mag: 調査中...", thread_ts=thread_ts)
+        # APM は通常 HTTP リクエストをトランザクション単位として自動検出するが、
+        # このボットは Socket Mode（WebSocket 常時接続）で動作するため HTTP エンドポイントを持たない。
+        # BackgroundTask として明示的にマークすることで APM がトランザクションを認識し、
+        # Bedrock 呼び出し等の外部サービス計測や AI Monitoring の LLM スパンが記録される。
+        with newrelic.agent.BackgroundTask(
+            newrelic.agent.application(),
+            name="slack-message-handler",
+            group="Slack",
+        ):
+            # 処理中プレースホルダーを投稿
+            placeholder = await say(text=":mag: 調査中...", thread_ts=thread_ts)
 
-        try:
-            self._conv.add_user_message(thread_ts, user_text)
-            messages = self._conv.get_messages(thread_ts)
+            try:
+                self._conv.add_user_message(thread_ts, user_text)
+                messages = self._conv.get_messages(thread_ts)
 
-            response_text = await self._claude.generate_response(messages)
-            self._conv.add_assistant_message(thread_ts, response_text)
+                response_text = await self._claude.generate_response(messages)
+                self._conv.add_assistant_message(thread_ts, response_text)
 
-            await client.chat_update(
-                channel=channel,
-                ts=placeholder["ts"],
-                text=response_text,
-            )
-        except Exception as exc:
-            logger.exception("Error processing message: %s", exc)
-            # 会話履歴から未完了のユーザーメッセージを除去して一貫性を保つ
-            history = self._conv.get_messages(thread_ts)
-            if history and history[-1]["role"] == "user":
-                self._conv._histories[thread_ts].pop()
+                await client.chat_update(
+                    channel=channel,
+                    ts=placeholder["ts"],
+                    text=response_text,
+                )
+            except Exception as exc:
+                logger.exception("Error processing message: %s", exc)
+                # 会話履歴から未完了のユーザーメッセージを除去して一貫性を保つ
+                history = self._conv.get_messages(thread_ts)
+                if history and history[-1]["role"] == "user":
+                    self._conv._histories[thread_ts].pop()
 
-            await client.chat_update(
-                channel=channel,
-                ts=placeholder["ts"],
-                text=f":x: エラーが発生しました。しばらく待ってから再度お試しください。\n```{exc}```",
-            )
+                await client.chat_update(
+                    channel=channel,
+                    ts=placeholder["ts"],
+                    text=f":x: エラーが発生しました。しばらく待ってから再度お試しください。\n```{exc}```",
+                )

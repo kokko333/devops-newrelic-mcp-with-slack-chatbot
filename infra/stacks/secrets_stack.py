@@ -11,3 +11,4 @@ class SecretsStack(cdk.Stack):
         secretsmanager.Secret(self, "SlackAppToken", secret_name="chatbot/slack-app-token")
         secretsmanager.Secret(self, "NrApiKey", secret_name="chatbot/newrelic-api-key")
         secretsmanager.Secret(self, "NrAccountId", secret_name="chatbot/newrelic-account-id")
+        secretsmanager.Secret(self, "NrLicenseKey", secret_name="chatbot/newrelic-license-key")

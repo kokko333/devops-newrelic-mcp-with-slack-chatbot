@@ -13,5 +13,10 @@ dist/
 ### secret files
 .env
 
+### Terraform
+.terraform/
+*.tfstate
+*.tfstate.backup
+
 ### personal files
 .claude/settings.local.json

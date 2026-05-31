@@ -1,0 +1,82 @@
+{
+  "name": "AI Monitoring - Slack チャットボット",
+  "description": "New Relic MCP Slack チャットボットの AI Monitoring ダッシュボード",
+  "permissions": "PUBLIC_READ_WRITE",
+  "pages": [
+    {
+      "name": "Overview",
+      "description": null,
+      "widgets": [
+        {
+          "title": "モデルごとのトークン消費数（月次推移）",
+          "layout": {
+            "column": 1,
+            "row": 1,
+            "width": 12,
+            "height": 3
+          },
+          "linkedEntityGuids": null,
+          "visualization": {
+            "id": "viz.line"
+          },
+          "rawConfiguration": {
+            "legend": {
+              "enabled": true
+            },
+            "nrqlQueries": [
+              {
+                "accountIds": [${account_id}],
+                "query": "FROM Metric SELECT sum(`llm.chat.completion.token_count`) FACET `response.model` SINCE 12 MONTHS AGO TIMESERIES 1 MONTH"
+              }
+            ],
+            "yAxisLeft": {
+              "zero": true
+            }
+          }
+        },
+        {
+          "title": "直近 3 件のエラー",
+          "layout": {
+            "column": 1,
+            "row": 4,
+            "width": 6,
+            "height": 3
+          },
+          "linkedEntityGuids": null,
+          "visualization": {
+            "id": "viz.table"
+          },
+          "rawConfiguration": {
+            "nrqlQueries": [
+              {
+                "accountIds": [${account_id}],
+                "query": "FROM LlmErrorMessage SELECT timestamp, error.message, error.code, response.model SINCE 3 MONTHS AGO ORDER BY timestamp DESC LIMIT 3"
+              }
+            ]
+          }
+        },
+        {
+          "title": "トークン使用量が多い質問 TOP 3（直近 1 ヶ月）",
+          "layout": {
+            "column": 7,
+            "row": 4,
+            "width": 6,
+            "height": 3
+          },
+          "linkedEntityGuids": null,
+          "visualization": {
+            "id": "viz.table"
+          },
+          "rawConfiguration": {
+            "nrqlQueries": [
+              {
+                "accountIds": [${account_id}],
+                "query": "FROM LlmChatCompletionMessage SELECT content, token_count, timestamp WHERE role = 'user' SINCE 1 MONTH AGO ORDER BY token_count DESC LIMIT 3"
+              }
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

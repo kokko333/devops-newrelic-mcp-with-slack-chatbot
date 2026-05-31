@@ -63,6 +63,9 @@ class BotStack(cdk.Stack):
         nr_account_id = secretsmanager.Secret.from_secret_name_v2(
             self, "NrAccountId", "chatbot/newrelic-account-id"
         )
+        nr_license_key = secretsmanager.Secret.from_secret_name_v2(
+            self, "NrLicenseKey", "chatbot/newrelic-license-key"
+        )
 
         # ------------------------------------------------------------------ #
         # IAM Task Role
@@ -128,12 +131,16 @@ class BotStack(cdk.Stack):
             environment={
                 "AWS_DEFAULT_REGION": self.region,
                 "BEDROCK_MODEL_ID": bedrock_model_id,
+                "NEW_RELIC_APP_NAME": os.environ.get("NEW_RELIC_APP_NAME", "newrelic-slack-bot"),
+                "NEW_RELIC_AI_MONITORING_ENABLED": "true",
+                "NEW_RELIC_DISTRIBUTED_TRACING_ENABLED": "true",
             },
             secrets={
                 "SLACK_BOT_TOKEN": ecs.Secret.from_secrets_manager(slack_bot_token),
                 "SLACK_APP_TOKEN": ecs.Secret.from_secrets_manager(slack_app_token),
                 "NEW_RELIC_API_KEY": ecs.Secret.from_secrets_manager(nr_api_key),
                 "NEW_RELIC_ACCOUNT_ID": ecs.Secret.from_secrets_manager(nr_account_id),
+                "NEW_RELIC_LICENSE_KEY": ecs.Secret.from_secrets_manager(nr_license_key),
             },
             logging=ecs.LogDrivers.aws_logs(
                 stream_prefix="bot",

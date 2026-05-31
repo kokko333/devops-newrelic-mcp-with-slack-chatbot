@@ -1,8 +1,15 @@
+import newrelic.agent
+
 import asyncio
 import logging
 import os
-
 from dotenv import load_dotenv
+
+# フレームワーク（slack_bolt）のインポートより前に initialize() を呼ぶ必要があるため、
+# stdlib/dotenv のインポート直後に記述している。
+load_dotenv()
+newrelic.agent.initialize()
+
 from slack_bolt.async_app import AsyncApp
 from slack_bolt.adapter.socket_mode.async_handler import AsyncSocketModeHandler
 
@@ -10,8 +17,6 @@ from nr_mcp_client import NRMCPClient
 from claude_client import ClaudeClient
 from conversation_manager import ConversationManager
 from slack_handler import SlackHandler
-
-load_dotenv()
 
 logging.basicConfig(
     level=logging.INFO,
